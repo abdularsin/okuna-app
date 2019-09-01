@@ -132,7 +132,10 @@ class CreatePostModalState extends State<CreatePostModal> {
           openbookProvider.textAccountAutocompletionService;
       _draftService = openbookProvider.draftService;
 
-      _textController = DraftTextEditingController.post(_draftService, text: widget.text);
+      _textController = DraftTextEditingController.post(
+          text: widget.text,
+          communityId: widget.community != null ? widget.community.id : null,
+          draftService: _draftService);
       _textController.addListener(_onPostTextChanged);
 
       _postItemsWidgets = [
