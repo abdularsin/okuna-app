@@ -3,6 +3,7 @@ import 'package:Okuna/models/community.dart';
 import 'package:Okuna/models/post.dart';
 import 'package:Okuna/models/post_preview_link_data.dart';
 import 'package:Okuna/models/user.dart';
+import 'package:Okuna/pages/home/lib/draft_editing_controller.dart';
 import 'package:Okuna/pages/home/modals/create_post/pages/share_post/share_post.dart';
 import 'package:Okuna/pages/home/modals/create_post/widgets/create_post_text.dart';
 import 'package:Okuna/pages/home/modals/create_post/widgets/post_community_previewer.dart';
@@ -10,6 +11,7 @@ import 'package:Okuna/pages/home/modals/create_post/widgets/post_image_previewer
 import 'package:Okuna/pages/home/modals/create_post/widgets/post_video_previewer.dart';
 import 'package:Okuna/pages/home/modals/create_post/widgets/remaining_post_characters.dart';
 import 'package:Okuna/provider.dart';
+import 'package:Okuna/services/draft.dart';
 import 'package:Okuna/services/httpie.dart';
 import 'package:Okuna/services/image_picker.dart';
 import 'package:Okuna/services/localization.dart';
@@ -55,8 +57,9 @@ class CreatePostModalState extends State<CreatePostModal> {
   ToastService _toastService;
   LocalizationService _localizationService;
   UserService _userService;
+  DraftService _draftService;
 
-  TextEditingController _textController;
+  DraftTextEditingController _textController;
   FocusNode _focusNode;
   int _charactersCount;
   String _previewUrl;
@@ -86,11 +89,6 @@ class CreatePostModalState extends State<CreatePostModal> {
   @override
   void initState() {
     super.initState();
-    _textController = TextEditingController();
-    if (widget.text != null) {
-      _textController.text = widget.text;
-    }
-    _textController.addListener(_onPostTextChanged);
     _focusNode = FocusNode();
     _focusNode.addListener(_onFocusNodeChanged);
     _hasFocus = false;
@@ -100,14 +98,6 @@ class CreatePostModalState extends State<CreatePostModal> {
     _isPostTextAllowedLength = false;
     _hasImage = false;
     _hasVideo = false;
-    _postItemsWidgets = [
-      OBCreatePostText(controller: _textController, focusNode: _focusNode)
-    ];
-
-    if (widget.community != null)
-      _postItemsWidgets.add(OBPostCommunityPreviewer(
-        community: widget.community,
-      ));
     if (widget.image != null) {
       _setPostImage(widget.image);
     }
@@ -140,6 +130,20 @@ class CreatePostModalState extends State<CreatePostModal> {
       _toastService = openbookProvider.toastService;
       _textAccountAutocompletionService =
           openbookProvider.textAccountAutocompletionService;
+      _draftService = openbookProvider.draftService;
+
+      _textController = DraftTextEditingController.post(_draftService, text: widget.text);
+      _textController.addListener(_onPostTextChanged);
+
+      _postItemsWidgets = [
+        OBCreatePostText(controller: _textController, focusNode: _focusNode)
+      ];
+
+      if (widget.community != null)
+        _postItemsWidgets.add(OBPostCommunityPreviewer(
+          community: widget.community,
+        ));
+
       _needsBootstrap = false;
     }
 
@@ -253,6 +257,7 @@ class CreatePostModalState extends State<CreatePostModal> {
 
     if (sharedPost != null) {
       // Remove modal
+      _textController.clearDraft();
       Navigator.pop(context, sharedPost);
     }
   }
@@ -416,6 +421,7 @@ class CreatePostModalState extends State<CreatePostModal> {
     } catch (error) {
       _onError(error);
     } finally {
+      _textController.clearDraft();
       _setCreateCommunityPostInProgress(false);
     }
   }
